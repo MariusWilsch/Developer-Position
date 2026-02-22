@@ -1,8 +1,29 @@
+/**
+ * @file Interactive terminal component connecting to the PTY-backed WebSocket server.
+ *
+ * Handles the new streaming protocol: stream_chunk events accumulate in Redux
+ * streamingText (shown live), response_complete finalizes them into history.
+ * Permission prompts are shown as an inline card with Allow/Deny buttons instead
+ * of blocking the server terminal.
+ *
+ * Design Context:
+ * WS message types received: stream_chunk, tool_use, tool_result, permission_prompt,
+ * response_complete, typing_start, typing_end, pong, ai_response (legacy fallback).
+ * WS messages sent: command, permission_response {choice: y|n|a}, ping.
+ */
 import { useState, useRef, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { RootState } from '../../store/store'
-import { addTerminalMessage, setAiTyping } from '../../store/tutorialSlice'
+import {
+  addTerminalMessage,
+  setAiTyping,
+  appendStreamingText,
+  clearStreamingText,
+  finalizeStreaming,
+  setPermissionPrompt,
+  clearPermissionPrompt
+} from '../../store/tutorialSlice'
 import TerminalOutput from './TerminalOutput'
 import TypingIndicator from './TypingIndicator'
 
@@ -11,21 +32,18 @@ let ws: WebSocket | null = null
 
 const InteractiveTerminal = () => {
   const dispatch = useDispatch()
-  const { terminalHistory, isAiTyping } = useSelector((state: RootState) => state.tutorial)
+  const { terminalHistory, isAiTyping, streamingText, permissionPrompt, isStreaming } =
+    useSelector((state: RootState) => state.tutorial)
   const [input, setInput] = useState('')
   const [isConnected, setIsConnected] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // Connect to WebSocket when component mounts
     connectToClaudeCode()
-    
-    // Focus input
     if (inputRef.current) {
       inputRef.current.focus()
     }
-
     return () => {
       if (ws) {
         ws.close()
@@ -34,15 +52,13 @@ const InteractiveTerminal = () => {
   }, [])
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight
     }
-  }, [terminalHistory, isAiTyping])
+  }, [terminalHistory, isAiTyping, streamingText, permissionPrompt])
 
   const connectToClaudeCode = () => {
     try {
-      // Connect to the WebSocket server that forwards to Claude Code
       ws = new WebSocket('ws://localhost:8080')
 
       ws.onopen = () => {
@@ -55,22 +71,55 @@ const InteractiveTerminal = () => {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)
-        
-        if (data.type === 'ai_response') {
-          dispatch(setAiTyping(false))
-          dispatch(addTerminalMessage({
-            type: 'ai',
-            content: data.content
-          }))
-        } else if (data.type === 'typing_start') {
-          dispatch(setAiTyping(true))
-        } else if (data.type === 'typing_end') {
-          dispatch(setAiTyping(false))
+
+        switch (data.type) {
+          case 'stream_chunk':
+            dispatch(appendStreamingText(data.content))
+            break
+
+          case 'tool_use':
+            // Finalize any accumulated streaming text first
+            dispatch(finalizeStreaming())
+            dispatch(addTerminalMessage({ type: 'ai', content: data.content }))
+            break
+
+          case 'tool_result':
+            dispatch(addTerminalMessage({ type: 'system', content: data.content }))
+            break
+
+          case 'permission_prompt':
+            dispatch(setPermissionPrompt(data.content))
+            dispatch(setAiTyping(false))
+            break
+
+          case 'response_complete':
+            dispatch(finalizeStreaming())
+            dispatch(setAiTyping(false))
+            dispatch(clearPermissionPrompt())
+            break
+
+          case 'typing_start':
+            dispatch(setAiTyping(true))
+            dispatch(clearStreamingText())
+            break
+
+          case 'typing_end':
+            dispatch(setAiTyping(false))
+            break
+
+          // Legacy fallback
+          case 'ai_response':
+            dispatch(setAiTyping(false))
+            dispatch(finalizeStreaming())
+            dispatch(addTerminalMessage({ type: 'ai', content: data.content }))
+            break
         }
       }
 
       ws.onclose = () => {
         setIsConnected(false)
+        dispatch(finalizeStreaming())
+        dispatch(clearPermissionPrompt())
         dispatch(addTerminalMessage({
           type: 'system',
           content: '❌ Connection to Claude Code lost. Please restart the tutorial.'
@@ -97,35 +146,34 @@ const InteractiveTerminal = () => {
     e.preventDefault()
     if (!input.trim()) return
 
-    // Add user message to terminal
     dispatch(addTerminalMessage({
       type: 'user',
       content: input.trim()
     }))
 
-    // Send command to Claude Code via WebSocket
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'command',
-        content: input.trim()
-      }))
+      ws.send(JSON.stringify({ type: 'command', content: input.trim() }))
       dispatch(setAiTyping(true))
     } else {
-      // Fallback to demo responses if WebSocket isn't available
       handleDemoResponse(input.trim())
     }
 
     setInput('')
   }
 
-  const handleDemoResponse = (command: string) => {
-    setTimeout(() => {
-      dispatch(setAiTyping(true))
-    }, 500)
+  const handlePermissionResponse = (choice: 'y' | 'n' | 'a') => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'permission_response', choice }))
+    }
+    dispatch(clearPermissionPrompt())
+    dispatch(setAiTyping(true))
+    dispatch(clearStreamingText())
+  }
 
+  const handleDemoResponse = (command: string) => {
+    setTimeout(() => dispatch(setAiTyping(true)), 500)
     setTimeout(() => {
       dispatch(setAiTyping(false))
-      
       if (command.includes('/rubber-duck') || command.includes('notification')) {
         dispatch(addTerminalMessage({
           type: 'ai',
@@ -137,9 +185,6 @@ const InteractiveTerminal = () => {
    - In-app notification center?
 
 2. Who should receive these notifications?
-   - All users?
-   - Specific user roles?
-   - Based on preferences?
 
 3. What events should trigger notifications?
 
@@ -154,12 +199,6 @@ This is demo mode since WebSocket connection failed. In real usage, this would c
         }))
       }
     }, 1500)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowUp') {
-      // Could implement command history here
-    }
   }
 
   return (
@@ -181,37 +220,97 @@ This is demo mode since WebSocket connection failed. In real usage, this would c
       </div>
 
       {/* Terminal Content */}
-      <div 
+      <div
         ref={terminalRef}
         className="flex-1 overflow-y-auto p-6 font-mono text-sm bg-gradient-to-b from-black/40 to-black/60"
       >
         <TerminalOutput messages={terminalHistory} />
-        {isAiTyping && <TypingIndicator />}
+
+        {/* Live streaming text */}
+        <AnimatePresence>
+          {isStreaming && streamingText && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-gray-300 pl-4 py-1"
+            >
+              {streamingText.split('\n').map((line, i) => (
+                <div key={i} className="leading-relaxed">{line}</div>
+              ))}
+              <span className="inline-block w-1.5 h-3.5 bg-gray-400 animate-pulse ml-0.5 align-middle" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Permission prompt */}
+        <AnimatePresence>
+          {permissionPrompt && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="mt-3 border border-yellow-500/40 bg-yellow-500/10 rounded-lg p-4"
+            >
+              <div className="flex items-start space-x-3 mb-4">
+                <span className="text-yellow-400 text-base mt-0.5">🔐</span>
+                <div className="flex-1">
+                  <p className="text-yellow-300 text-xs font-semibold mb-1">Permission Required</p>
+                  <p className="text-gray-300 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                    {permissionPrompt}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePermissionResponse('y')}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600/80 hover:bg-green-600 text-white transition-colors"
+                >
+                  Allow Once
+                </button>
+                <button
+                  onClick={() => handlePermissionResponse('a')}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600/80 hover:bg-blue-600 text-white transition-colors"
+                >
+                  Always Allow
+                </button>
+                <button
+                  onClick={() => handlePermissionResponse('n')}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                >
+                  Deny
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {isAiTyping && !isStreaming && !permissionPrompt && <TypingIndicator />}
       </div>
 
       {/* Command Input */}
       <div className="p-6 border-t border-white/10">
         <form onSubmit={handleSubmit} className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 text-sm font-mono">
-            <span className="text-blue-400 font-semibold">claude</span> 
+            <span className="text-blue-400 font-semibold">claude</span>
             <span className="text-gray-500">@</span>
             <span className="text-purple-400 font-semibold">tutorial</span>
             <span className="text-gray-300">:</span>
             <span className="text-green-400 font-semibold">~</span>
             <span className="text-gray-300">$</span>
           </div>
-          
+
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
             placeholder="Type your command here..."
             className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 font-mono text-sm"
             autoComplete="off"
           />
-          
+
           <div className="animate-pulse bg-white/80 text-black px-1 rounded-sm font-mono text-sm">
             █
           </div>

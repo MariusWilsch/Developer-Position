@@ -1,3 +1,4 @@
 projects/
 *.jsonl
 plugins/claude-code-team-plugin/tutorial/node_modules
+plugins/claude-code-team-plugin/tutorial/dist

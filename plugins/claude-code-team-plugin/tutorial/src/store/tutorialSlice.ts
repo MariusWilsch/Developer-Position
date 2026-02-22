@@ -30,6 +30,9 @@ interface TutorialState {
   isAiTyping: boolean
   isChatTyping: boolean
   completedSteps: string[]
+  streamingText: string
+  permissionPrompt: string | null
+  isStreaming: boolean
 }
 
 const initialSteps: TutorialStep[] = [
@@ -59,7 +62,10 @@ const initialState: TutorialState = {
   confidence: 'unclear',
   isAiTyping: false,
   isChatTyping: false,
-  completedSteps: []
+  completedSteps: [],
+  streamingText: '',
+  permissionPrompt: null,
+  isStreaming: false
 }
 
 export const tutorialSlice = createSlice({
@@ -118,6 +124,31 @@ export const tutorialSlice = createSlice({
     },
     setDemoActive: (state, action: PayloadAction<boolean>) => {
       state.isDemoActive = action.payload
+    },
+    appendStreamingText: (state, action: PayloadAction<string>) => {
+      state.streamingText += action.payload
+      state.isStreaming = true
+    },
+    clearStreamingText: (state) => {
+      state.streamingText = ''
+      state.isStreaming = false
+    },
+    finalizeStreaming: (state) => {
+      if (state.streamingText.trim()) {
+        state.terminalHistory.push({
+          type: 'ai',
+          content: state.streamingText,
+          timestamp: Date.now()
+        })
+      }
+      state.streamingText = ''
+      state.isStreaming = false
+    },
+    setPermissionPrompt: (state, action: PayloadAction<string>) => {
+      state.permissionPrompt = action.payload
+    },
+    clearPermissionPrompt: (state) => {
+      state.permissionPrompt = null
     }
   },
 })
@@ -134,7 +165,12 @@ export const {
   addChatMessage,
   setChatTyping,
   clearChat,
-  setDemoActive
+  setDemoActive,
+  appendStreamingText,
+  clearStreamingText,
+  finalizeStreaming,
+  setPermissionPrompt,
+  clearPermissionPrompt
 } = tutorialSlice.actions
 
 export default tutorialSlice.reducer
