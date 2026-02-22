@@ -41,20 +41,11 @@ const initialSteps: TutorialStep[] = [
     duration: 30
   },
   {
-    id: 'concept',
-    type: 'concept',
-    title: 'The Core Problem',
-    content: 'Without structure, AI assistants are unpredictable. They skip steps, make assumptions, and create inconsistent results.',
-    duration: 45
-  },
-  {
     id: 'rubber-duck',
     type: 'command',
-    title: 'Start with Clarity',
+    title: 'Get Started',
     content: 'Let\'s see how rubber ducking creates confidence before implementation.',
     command: '/rubber-duck',
-    expectedBehavior: 'AI asks clarifying questions about your feature idea',
-    guidance: 'Notice how the AI helps you think through ambiguities before any code is written'
   }
 ]
 

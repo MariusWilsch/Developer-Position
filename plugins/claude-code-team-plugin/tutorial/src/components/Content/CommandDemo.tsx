@@ -83,7 +83,7 @@ This will connect to real Claude Code via WebSocket.`
               ) : (
                 <>
                   <PlayIcon className="w-4 h-4" />
-                  <span>{demoCompleted ? 'Run Again' : 'Start Demo'}</span>
+                  <span>{demoCompleted ? 'Run Again' : 'Get Started'}</span>
                 </>
               )}
             </button>
@@ -92,26 +92,26 @@ This will connect to real Claude Code via WebSocket.`
         
         <div className="space-y-4">
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-              <span className="text-blue-400 font-bold">1</span>
+            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-gray-300 font-bold text-sm">1</span>
             </div>
             <div>
-              <p className="text-white font-semibold">Click "Start Demo" to open the terminal</p>
+              <p className="text-white font-semibold">Click "Get Started" to open the terminal</p>
               <p className="text-gray-400 text-sm">This will connect to real Claude Code</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-              <span className="text-purple-400 font-bold">2</span>
+            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-gray-300 font-bold text-sm">2</span>
             </div>
             <div>
               <p className="text-white font-semibold">Type the command in the terminal below</p>
-              <p className="text-gray-400 text-sm">Run: <code className="text-blue-400">{step.command} I want to add user notifications</code></p>
+              <p className="text-gray-400 text-sm">Run: <code className="text-gray-300">{step.command} I want to add user notifications</code></p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
-              <span className="text-green-400 font-bold">3</span>
+            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-gray-300 font-bold text-sm">3</span>
             </div>
             <div>
               <p className="text-white font-semibold">Follow Claude's guidance</p>
@@ -121,27 +121,6 @@ This will connect to real Claude Code via WebSocket.`
         </div>
       </div>
 
-      {/* Expected Behavior Callout */}
-      {step.expectedBehavior && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="card bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20"
-        >
-          <h4 className="font-semibold text-purple-300 mb-3 text-lg">Expected Behavior</h4>
-          <p className="text-gray-300 leading-relaxed">{step.expectedBehavior}</p>
-        </motion.div>
-      )}
-
-      {/* Guidance */}
-      {step.guidance && (
-        <div className="card bg-blue-500/10 border-blue-500/20">
-          <p className="text-blue-200">
-            <span className="text-blue-300 font-semibold">💡 Watch for:</span> {step.guidance}
-          </p>
-        </div>
-      )}
     </motion.div>
   )
 }

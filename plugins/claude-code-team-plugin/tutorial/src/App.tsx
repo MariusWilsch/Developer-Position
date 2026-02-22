@@ -53,22 +53,10 @@ function App() {
                 <span className="text-white font-bold text-lg">T</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold gradient-text">Traceline Tutorial</h1>
+                <h1 className="text-xl font-bold text-white">Traceline</h1>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm transition-all ${
-                isConnected 
-                  ? 'bg-green-500/20 text-green-300 border border-green-500/20' 
-                  : 'bg-red-500/20 text-red-300 border border-red-500/20'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-                }`} />
-                <span className="font-medium">{isConnected ? 'Connected' : 'Disconnected'}</span>
-              </div>
-            </div>
           </div>
         </div>
       </header>
