@@ -2,100 +2,14 @@
 
 Team onboarding plugin with clarity workflow commands, worktree skill, and commit guards.
 
-## Dependencies
-
-Install these before using the plugin:
-
-**jq** (JSON processor - required for hooks):
-```bash
-# Ubuntu/Debian
-sudo apt install jq
-
-# Mac
-brew install jq
-```
-
-**gh** (GitHub CLI):
-```bash
-curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-sudo apt update
-sudo apt install gh
-gh auth login
-```
-
-**uv** (Python package manager):
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**git-worktree-runner** (worktree management):
-```bash
-git clone https://github.com/coderabbitai/git-worktree-runner.git
-cd git-worktree-runner
-./install.sh
-```
-
-**Homebrew** (package manager for WSL):
-```bash
-# Install build-essential first (required for WSL)
-sudo apt-get update
-sudo apt-get install build-essential
-
-# Install Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Add to PATH
-test -d ~/.linuxbrew && eval $(~/.linuxbrew/bin/brew shellenv)
-test -d /home/linuxbrew/.linuxbrew && eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
-echo "eval \$($(brew --prefix)/bin/brew shellenv)" >> ~/.bashrc
-source ~/.bashrc
-```
-
-**Supabase CLI** (database operations):
-```bash
-npm install -g supabase
-supabase login
-```
-
-**hand-picked-tools MCP** (AI tools):
-```bash
-claude mcp add hand-picked-tools --transport http --scope user https://metamcp.iitr-cloud.de/metamcp/hand-picked-tools/mcp
-```
-
-**Google Chrome** (for Chrome DevTools MCP):
-```bash
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo dpkg -i google-chrome-stable_current_amd64.deb
-sudo apt --fix-broken install
-```
-
-**mcp2rest** (MCP gateway - optional):
-```bash
-npm install -g mcp2rest
-
-# Install as service (use env to preserve PATH for nvm users)
-sudo env "PATH=$PATH" npx mcp2rest service install
-
-# Or run in foreground
-npx mcp2rest start
-
-# Add Chrome DevTools server
-npx mcp2rest add chrome chrome-devtools-mcp@latest
-
-# Verify
-curl http://localhost:28888/health
-```
-
 ## Install
-
-### Public Repository (default)
 
 ```
 /plugin marketplace add MariusWilsch/claude-code-team-marketplace
 /plugin install claude-code-team-plugin@wilsch-ai-plugins
 ```
+
+Restart Claude Code, then run `/setup` in a new session — it detects your OS and installs all required dependencies (jq, gh, uv) automatically.
 
 ### Update
 
@@ -168,6 +82,7 @@ source ~/.zshrc  # or source ~/.bashrc
 
 | Command | Purpose |
 |---------|---------|
+| `/setup` | Install dependencies and configure MCP (run once after install) |
 | `/onboarding` | Start session, link issue, bootstrap context |
 | `/requirements-clarity` | Disambiguate WHAT to build |
 | `/implementation-clarity` | Plan HOW to build |
