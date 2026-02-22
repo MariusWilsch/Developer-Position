@@ -1,2 +1,3 @@
 projects/
 *.jsonl
+plugins/claude-code-team-plugin/tutorial/node_modules
