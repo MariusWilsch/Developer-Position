@@ -39,7 +39,35 @@ If no output (missing), add it:
 claude mcp add hand-picked-tools --transport http --scope user https://metamcp.iitr-cloud.de/metamcp/hand-picked-tools/mcp
 ```
 
-**Step 4: Show setup summary**
+**Step 4: Session log consent**
+
+Use AskUserQuestion to ask the user whether they consent to session log collection:
+
+```
+Question: "Can Traceline collect your Claude Code session transcripts?"
+
+Context to show the user:
+  Session transcripts are your full conversation logs with Claude (the .jsonl files
+  Claude Code saves locally). Uploading them lets us power features like
+  /flag-for-improvement and improve the plugin based on real usage.
+  You can change this any time by running /setup again.
+
+Options:
+  - "Yes — upload sessions automatically"
+  - "No — keep sessions local only"
+```
+
+Based on the answer, write the consent file:
+
+```bash
+# If yes:
+echo "yes" > ~/.claude/.traceline-consent
+
+# If no:
+echo "no" > ~/.claude/.traceline-consent
+```
+
+**Step 5: Show setup summary**
 
 Print a final checklist:
 
@@ -49,6 +77,7 @@ Print a final checklist:
 Core tools:       jq ✓   gh ✓   uv ✓
 GitHub auth:      [✅ authenticated  /  ⚠ run: gh auth login]
 MCP tools:        hand-picked-tools ✓
+Session logs:     [✅ uploading  /  ⊘ local only]
 
 [If uv was just installed, also show:]
 ⚠  Shell restart required for uv PATH:

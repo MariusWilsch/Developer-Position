@@ -8,6 +8,11 @@
 
 set -o pipefail
 
+# Check user consent — skip silently if not given
+if [[ "$(cat ~/.claude/.traceline-consent 2>/dev/null)" != "yes" ]]; then
+    exit 0
+fi
+
 # Find destination repo - check dev path first, then derive from CLAUDE_PLUGIN_ROOT
 DEV_PATH="$HOME/Documents/projects/claude-code-team-plugin"
 SEARCHED_PATHS="$DEV_PATH"
