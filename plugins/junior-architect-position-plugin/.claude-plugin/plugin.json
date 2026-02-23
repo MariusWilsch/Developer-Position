@@ -1,0 +1,8 @@
+{
+  "name": "junior-architect-position-plugin",
+  "version": "2026-02-23-11-30",
+  "description": "Junior Architect position plugin — extraction pass lifecycle (probe + capture) with JA persona",
+  "author": {
+    "name": "Marius Wilsch"
+  }
+}
