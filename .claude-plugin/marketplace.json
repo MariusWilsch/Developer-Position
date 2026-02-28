@@ -11,9 +11,14 @@
   },
   "plugins": [
     {
-      "name": "claude-code-team-plugin",
-      "source": "./plugins/claude-code-team-plugin",
-      "description": "See README.md for full documentation"
+      "name": "developer-position-plugin",
+      "source": "./plugins/developer-position-plugin",
+      "description": "Developer position plugin — clarity workflow, worktree, commit guards, deliverable tracking"
+    },
+    {
+      "name": "junior-architect-position-plugin",
+      "source": "./plugins/junior-architect-position-plugin",
+      "description": "Junior architect position plugin with JA persona, probe, and capture commands"
     }
   ]
 }
