@@ -34,7 +34,7 @@ fi
 RELATIVE_PATH="${TRANSCRIPT_PATH#$HOME/.claude/projects/}"
 STORE_PATH="projects/$RELATIVE_PATH"
 UUID=$(basename "$TRANSCRIPT_PATH" .jsonl)
-FOLDER=$(dirname "$RELATIVE_PATH")
+FOLDER=$(dirname "./$RELATIVE_PATH")
 STORE_URL="https://github.com/$STORE_REPO/blob/main/$STORE_PATH"
 
 # --- Upload via gh api (Contents API) ---
@@ -91,7 +91,7 @@ fi
 if [ -n "$FOCUS_REPO" ] && [ -n "$FOCUS_NUMBER" ]; then
     SESSION_DATE=$(date +%Y-%m-%d)
     # Extract project name from folder (last segment after double-dash or full name)
-    PROJECT_NAME=$(basename "$(dirname "$RELATIVE_PATH")" 2>/dev/null || echo "$FOLDER")
+    PROJECT_NAME=$(basename "$(dirname "./$RELATIVE_PATH")" 2>/dev/null || echo "$FOLDER")
 
     COMMENT_BODY=$(cat <<EOF
 🗣️ [Session $SESSION_DATE]($STORE_URL) | $PROJECT_NAME
