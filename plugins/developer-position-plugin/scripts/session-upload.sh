@@ -69,10 +69,17 @@ fi
 FOCUS_REPO=""
 FOCUS_NUMBER=""
 
-# Primary: session-state file written by onboarding
+# Primary: session-state file written by onboarding (keyed by session_id)
 if [ -n "$SESSION_ID" ] && [ -f "$SESSION_STATE_DIR/$SESSION_ID" ]; then
     STATE_CONTENT=$(cat "$SESSION_STATE_DIR/$SESSION_ID" 2>/dev/null)
     # Format: "owner/repo#number"
+    FOCUS_REPO=$(echo "$STATE_CONTENT" | cut -d'#' -f1)
+    FOCUS_NUMBER=$(echo "$STATE_CONTENT" | cut -d'#' -f2)
+fi
+
+# Secondary: try UUID from transcript path (onboarding writes {uuid}-keyed file)
+if [ -z "$FOCUS_NUMBER" ] && [ -f "$SESSION_STATE_DIR/$UUID" ]; then
+    STATE_CONTENT=$(cat "$SESSION_STATE_DIR/$UUID" 2>/dev/null)
     FOCUS_REPO=$(echo "$STATE_CONTENT" | cut -d'#' -f1)
     FOCUS_NUMBER=$(echo "$STATE_CONTENT" | cut -d'#' -f2)
 fi
@@ -104,7 +111,7 @@ EOF
         echo "session-upload: Failed to post session comment on $FOCUS_REPO#$FOCUS_NUMBER" >&2
     }
 else
-    echo "session-upload: No session-state found, no JSONL match, skipping issue comment" >&2
+    echo "session-upload: No session-state ($SESSION_ID / $UUID), no JSONL match, skipping issue comment" >&2
 fi
 
 # Success

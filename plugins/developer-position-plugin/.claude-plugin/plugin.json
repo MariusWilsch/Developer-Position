@@ -1,6 +1,6 @@
 {
   "name": "developer-position-plugin",
-  "version": "2026-02-28-16-55",
+  "version": "2026-02-28-20-19",
   "description": "Developer position plugin — clarity workflow, worktree, commit guards, deliverable tracking",
   "author": {
     "name": "Marius Wilsch"
