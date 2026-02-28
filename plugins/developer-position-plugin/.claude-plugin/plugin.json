@@ -4,6 +4,5 @@
   "description": "Developer position plugin — clarity workflow, worktree, commit guards, deliverable tracking",
   "author": {
     "name": "Marius Wilsch"
-  },
-  "hooks": "./hooks/hooks.json"
+  }
 }
