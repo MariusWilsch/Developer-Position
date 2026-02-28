@@ -135,6 +135,12 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
       - Store selected issue as `{focus}`
       - Construct issue URL: `https://github.com/DaveX2001/deliverable-tracking/issues/{focus}`
       - **Write issue to statusline state:** Run `mkdir -p ~/.claude/.session-state && echo "{repo}#{focus}" > ~/.claude/.session-state/$CLAUDE_CODE_SESSION_ID` (where `{repo}` is the issue's repository, e.g., `DaveX2001/deliverable-tracking`)
+      - **Write conversation-store URL:** Construct the predictable URL from the conversation JSONL path and write it for commit trailer enforcement:
+        1. Extract UUID from the conversation path printed at session start (the JSONL filename without `.jsonl`)
+        2. Extract folder from the conversation path (the directory name under `~/.claude/projects/`)
+        3. Construct URL: `https://github.com/MariusWilsch/claude-code-conversation-store/blob/main/projects/{folder}/{uuid}.jsonl`
+        4. Run: `echo "{url}" > ~/.claude/.session-state/conversation-url`
+        5. This file is read by `git-commit-guard.sh` to enforce `Conversation:` trailers in commits
       - Announce: "Session linked to issues {all_issues}. Commits will reference #{focus}."
 
    b2. **Branch warning (feature development on main/staging):**
