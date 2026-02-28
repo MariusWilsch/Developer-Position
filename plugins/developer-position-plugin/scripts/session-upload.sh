@@ -77,10 +77,10 @@ if [ -n "$SESSION_ID" ] && [ -f "$SESSION_STATE_DIR/$SESSION_ID" ]; then
     FOCUS_NUMBER=$(echo "$STATE_CONTENT" | cut -d'#' -f2)
 fi
 
-# Fallback: scan first 50 lines of JSONL for issue reference
+# Fallback: scan first 100 lines of JSONL for issue reference
 if [ -z "$FOCUS_NUMBER" ]; then
     # Look for patterns like "deliverable-tracking#NNN" or "Refs DaveX2001/deliverable-tracking#NNN"
-    MATCH=$(head -50 "$TRANSCRIPT_PATH" | grep -oE '[A-Za-z0-9_-]+/[A-Za-z0-9_-]+#[0-9]+' | head -1)
+    MATCH=$(head -100 "$TRANSCRIPT_PATH" | grep -oE '[A-Za-z0-9_-]+/[A-Za-z0-9_-]+#[0-9]+' | head -1)
     if [ -n "$MATCH" ]; then
         FOCUS_REPO=$(echo "$MATCH" | cut -d'#' -f1)
         FOCUS_NUMBER=$(echo "$MATCH" | cut -d'#' -f2)
