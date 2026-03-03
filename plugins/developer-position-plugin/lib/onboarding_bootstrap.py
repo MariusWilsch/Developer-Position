@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -128,6 +129,8 @@ def get_issue_list(label: str) -> list[dict]:
 def main():
     # Get conversation path from env
     conv_path = os.environ.get("CLAUDE_CONVERSATION_PATH", "")
+    if not conv_path:
+        print("WARNING: CLAUDE_CONVERSATION_PATH is empty — session-state file will not be created, session comment may fail", file=sys.stderr)
 
     # Detect environment
     pwd_path = Path.cwd()

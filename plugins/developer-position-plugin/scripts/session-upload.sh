@@ -11,6 +11,18 @@ set -o pipefail
 
 STORE_REPO="MariusWilsch/claude-code-conversation-store"
 SESSION_STATE_DIR="$HOME/.claude/.session-state"
+LOG_FILE="$HOME/.claude/logs/session-upload.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+log_entry() {
+    local event="$1" detail="${2:-}"
+    printf '{"ts":"%s","uuid":"%s","event":"%s","focus":"%s","detail":"%s"}\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "${UUID:-unknown}" \
+        "$event" \
+        "${FOCUS_REPO:+$FOCUS_REPO#$FOCUS_NUMBER}" \
+        "$detail" >> "$LOG_FILE"
+}
 
 # --- Read stdin ---
 INPUT=$(cat)
@@ -61,9 +73,12 @@ UPLOAD_EXIT=$?
 rm -f "$UPLOAD_BODY"
 
 if [ $UPLOAD_EXIT -ne 0 ]; then
+    log_entry "upload_failed" "exit $UPLOAD_EXIT"
     echo "session-upload: Upload to $STORE_REPO failed (exit $UPLOAD_EXIT)" >&2
     exit 0
 fi
+
+log_entry "upload_success"
 
 # --- Determine focus issue ---
 FOCUS_REPO=""
@@ -84,10 +99,10 @@ if [ -z "$FOCUS_NUMBER" ] && [ -f "$SESSION_STATE_DIR/$UUID" ]; then
     FOCUS_NUMBER=$(echo "$STATE_CONTENT" | cut -d'#' -f2)
 fi
 
-# Fallback: scan first 100 lines of JSONL for issue reference
+# Fallback: scan first 500 lines of JSONL for issue reference (onboarding ref may be deeper)
 if [ -z "$FOCUS_NUMBER" ]; then
     # Look for patterns like "deliverable-tracking#NNN" or "Refs DaveX2001/deliverable-tracking#NNN"
-    MATCH=$(head -100 "$TRANSCRIPT_PATH" | grep -oE '[A-Za-z0-9_-]+/[A-Za-z0-9_-]+#[0-9]+' | head -1)
+    MATCH=$(head -500 "$TRANSCRIPT_PATH" | grep -oE '[A-Za-z0-9_-]+/[A-Za-z0-9_-]+#[0-9]+' | head -1)
     if [ -n "$MATCH" ]; then
         FOCUS_REPO=$(echo "$MATCH" | cut -d'#' -f1)
         FOCUS_NUMBER=$(echo "$MATCH" | cut -d'#' -f2)
@@ -107,10 +122,21 @@ if [ -n "$FOCUS_REPO" ] && [ -n "$FOCUS_NUMBER" ]; then
 EOF
 )
 
-    gh issue comment "$FOCUS_NUMBER" --repo "$FOCUS_REPO" --body "$COMMENT_BODY" > /dev/null 2>&1 || {
-        echo "session-upload: Failed to post session comment on $FOCUS_REPO#$FOCUS_NUMBER" >&2
-    }
+    COMMENT_OK=false
+    for attempt in 1 2 3; do
+        if gh issue comment "$FOCUS_NUMBER" --repo "$FOCUS_REPO" --body "$COMMENT_BODY" > /dev/null 2>&1; then
+            log_entry "comment_posted" "attempt $attempt"
+            COMMENT_OK=true
+            break
+        fi
+        sleep 1
+    done
+    if [ "$COMMENT_OK" = false ]; then
+        log_entry "comment_failed" "3 attempts exhausted"
+        echo "session-upload: Failed to post session comment on $FOCUS_REPO#$FOCUS_NUMBER after 3 attempts" >&2
+    fi
 else
+    log_entry "comment_skipped" "no focus issue found"
     echo "session-upload: No session-state ($SESSION_ID / $UUID), no JSONL match, skipping issue comment" >&2
 fi
 
