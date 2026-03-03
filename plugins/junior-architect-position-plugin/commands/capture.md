@@ -12,9 +12,9 @@ the Developer who implements, the client who aligns, the SA who reviews.
 
 ### 7. Immediate task description or request
 
-**BEFORE UPDATE:** Read hippocampus reference files for structural knowledge:
-- `~/.claude/skills/hippocampus/references/design-doc-workflow.md` (stable components, template)
-- `~/.claude/skills/hippocampus/references/meeting-agenda-workflow.md` (5-question structure, template)
+**BEFORE UPDATE:** Read reference files for structural knowledge:
+- `references/design-doc-workflow.md` (stable components, template)
+- `references/meeting-agenda-workflow.md` (5-question structure, template)
 
 These define WHAT the documents look like — section names, component logic, discussion topic principles.
 

@@ -31,8 +31,9 @@ RESOLVE work.
    surface implicit knowledge the user hasn't articulated yet
 2. Default mode is probing questions via AskUserQuestion. Questions force the user
    to choose, articulate, or discover — this IS the value, not the resolution draft
-3. Transition to resolution draft only when you cannot generate a genuine next question.
-   The transition should be invisible — if it feels like a mode switch, probing was insufficient
+3. When an item reaches resolution through probing, capture the user's verbatim words
+   as the resolution record. Resolution drafts (instructional prose) are UPDATE artifacts —
+   they do not appear during RESOLVE. No exceptions.
 4. AskUserQuestion gate after each item — show progress X/N
 5. No implicit yeses — only explicit approvals to move on
 
