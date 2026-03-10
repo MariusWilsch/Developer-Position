@@ -62,7 +62,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-upload.sh"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/session-upload.sh",
+            "async": true
           }
         ]
       }
