@@ -6,8 +6,30 @@
 # Uploads conversation to MariusWilsch/claude-code-conversation-store via gh api.
 # If session was linked to an issue (via onboarding), posts a session comment.
 # Always exits 0 to not block session termination.
+#
+# Self-detach: On first invocation (no --detached flag), reads stdin into a temp file,
+# re-launches itself via nohup with --detached, then exits 0 immediately.
+# This survives Claude Code v2.1.72's aggressive hook subprocess teardown.
+# See: https://github.com/anthropics/claude-code/issues/32712
 
 set -o pipefail
+
+# --- Self-detach from Claude Code's signal group (v2.1.72 defense) ---
+# setsid is not available on macOS; use nohup + background fork instead.
+if [[ "$1" != "--detached" ]]; then
+    # Read stdin NOW (only available from hook runner on first invocation)
+    _STDIN_TMP=$(mktemp)
+    cat > "$_STDIN_TMP"
+    # Re-exec detached: nohup ignores SIGHUP, & backgrounds, disown severs job control
+    nohup bash "$0" --detached "$_STDIN_TMP" </dev/null >/dev/null 2>&1 &
+    disown $!
+    exit 0
+fi
+
+# --- Running detached: read stdin from temp file ---
+_STDIN_TMP="$2"
+INPUT=$(cat "$_STDIN_TMP" 2>/dev/null)
+rm -f "$_STDIN_TMP"
 
 STORE_REPO="MariusWilsch/claude-code-conversation-store"
 SESSION_STATE_DIR="$HOME/.claude/.session-state"
@@ -23,9 +45,6 @@ log_entry() {
         "${FOCUS_REPO:+$FOCUS_REPO#$FOCUS_NUMBER}" \
         "$detail" >> "$LOG_FILE"
 }
-
-# --- Read stdin ---
-INPUT=$(cat)
 
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
