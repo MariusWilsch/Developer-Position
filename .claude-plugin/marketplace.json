@@ -1,6 +1,6 @@
 {
   "name": "wilsch-ai-plugins",
-  "version": "2026-02-09-09-31",
+  "version": "2026-03-11-22-46",
   "description": "Wilsch AI team plugins for Claude Code",
   "metadata": {
     "description": "Team onboarding plugin with clarity workflow commands, worktree skill, issue tracking statusline, and commit guards."
