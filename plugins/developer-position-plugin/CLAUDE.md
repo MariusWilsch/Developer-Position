@@ -98,7 +98,7 @@ You cannot proceed past ✗. This isn't optional - it's how the cycle works. Ski
 
 ### Why Clear Boundaries Matter
 
-**Ephemeral Sessions:** When every cycle completes at commit, you can stop at 60-70% token usage. Finish the current requirement completely, then end the session. Next session starts fresh with the next requirement. No mid-requirement breaks - you always complete what you start.
+**Ephemeral Sessions:** At 80% token usage, warn the user that context is running low so they can decide whether to continue or wrap up. Finishing the current requirement and pushing is always more important than stopping early — incomplete cycles (copied files without commit, edits without push) create the exact problems ephemeral sessions are designed to prevent. Next session starts fresh with the next requirement.
 
 **Task Clarity:** You always know: "Where am I in this requirement?" The answer is always one of five phases. You always know: "Is this requirement done?" The answer is: "Has it been committed?"
 
@@ -242,7 +242,7 @@ Clarity phases iterate: ✗ → investigate/ask → ✗ → more disambiguation 
 
 ### Why This Exists
 
-Knowledge lives in authoritative sources, not session memory. You retrieve truth on-demand when you need it, not in advance. This enables ephemeral sessions - you can finish a cycle, end the session at 60-70% tokens, and start completely fresh next time. No context carried between sessions, no handoff documents, no session memory dependency. Truth persists in sources. You discover it when needed.
+Knowledge lives in authoritative sources, not session memory. You retrieve truth on-demand when you need it, not in advance. This enables ephemeral sessions - at 80% tokens, warn the user so they can decide whether to continue or wrap up. No context carried between sessions, no handoff documents, no session memory dependency. Truth persists in sources. You discover it when needed.
 
 ### How JIT Works
 
@@ -289,7 +289,8 @@ After commit, the understanding you built during clarity phases is disposable. Y
 ```
 ✅ TASK COMPLETED
 
-Commit: [git commit link or hash]
+Commit: [{hash}]({commit_url})
+Issue: [#{N}]({issue_url})  ← only when session linked
 
 💡 Check context: statusline or /context
 
@@ -301,117 +302,7 @@ Ready for new requirement.
 
 </protocol>
 
-<investigation_delegation_protocol date="2025-12-12">
-# Investigation Delegation Protocol
-
-## N-Tool Fallback Heuristic
-
-**Rule:** After 3+ tool calls with uncertain/incomplete outcomes for the same investigation, YOU MUST delegate the remainder to a Task agent. No exceptions.
-
-**Why this exists:** Main context window is a shared resource. Iterative debugging (15+ tool calls with uncertain outcomes) clutters context. Agents return concise summaries. Every time you execute inline instead of delegating = context waste.
-
-**Trigger conditions (delegate when ANY apply):**
-- 3+ tool calls with uncertain/incomplete results
-- Remote systems involved (SSH, database, API calls)
-- Outcomes uncertain (might require multiple checks)
-- Trigger phrases from user: "validate", "debug", "investigate", "check if", "verify"
-
-**Delegation format:**
-```
-Task(subagent_type="general-purpose", model="sonnet", prompt="[investigation summary + what to find]")
-```
-
-**What counts as "uncertain outcome":**
-- Result doesn't answer the question directly
-- Result raises new questions requiring more investigation
-- Error occurred, need to try alternative approach
-- Partial information, need to gather more
-
-**Anti-patterns (DO NOT do these):**
-- ❌ Execute 5+ SSH commands in main context to debug remote issue
-- ❌ Run multiple database queries trying to find root cause
-- ❌ Chain grep/read operations searching for answer
-
-**Correct pattern:**
-- ✅ Recognize investigation pattern after 1-2 tool calls
-- ✅ Delegate to agent: "Find root cause of X by checking Y, Z"
-- ✅ Receive summary in main context
-- ✅ Present findings to user
-
-**Enforcement:** Executing 5+ iterative tool calls in main context without delegation = protocol violation. Every time.
-</investigation_delegation_protocol>
-
-<output_formatting_protocol date="2025-09-20">
-# Output Formatting Protocol
-
-## WHEN/WHY Behavioral Patterns
-
-**WHEN:** Any user-facing communication output
-**WHY:** Human attention is the main thread bottleneck - don't block it
-
-**Behavioral Rules:**
-- Default: 3-4 word bullets for scanning speed
-- Override: Sequential thinking = unlimited detail (hidden from user)
-- Exception: Code examples may exceed for technical accuracy
-- Priority: Scanning speed over completeness
-
-**WHEN:** Plan mode communications requiring approval
-**WHY:** 5-10 second review window requirement
-
-**Behavioral Rules:**
-- Bold keyword anchors for F-pattern scanning
-- Progressive disclosure via indentation
-- Rule of three grouping within sections
-- Whitespace breathing between sections
-</output_formatting_protocol>
-
-<git_instructions>
-**WHEN:** Merge conflicts encountered
-**WHY:** Require project expertise beyond AI knowledge
-**Behavior:** Defer to user for resolution
-</git_instructions>
-
-<makefile_check>
-**WHEN:** Docker/deployment work
-**WHY:** Makefiles contain orchestration logic docker-compose or you ad-hoc approach alone might miss
-**Behavior:** Always check `make help` first, prefer make targets over raw commands
-</makefile_check>
-
-<buildkit_gotcha>
-# BuildKit Base Image Gotcha
-
-**What is BuildKit?** Docker's modern build backend (default since Docker 23.0). Provides parallel builds, better caching, and `--mount` syntax.
-
-**The Gotcha:** BuildKit ALWAYS checks the registry for metadata, even for local-only image names. There's no way to prevent this check.
-
-**Symptom:** `pull access denied, repository does not exist` when building with a local base image.
-
-**Fix:** Use `DOCKER_BUILDKIT=0` for builds that use local base images:
-```bash
-# ❌ BuildKit (always checks registry, fails for local-only images)
-docker compose build flask
-
-# ✅ Legacy Docker (uses local images without registry check)
-DOCKER_BUILDKIT=0 docker compose build flask
-```
-
-**Best practice:** Use local-only tags (`my-base:latest` not `user/my-base:latest`) AND `DOCKER_BUILDKIT=0` for services with local base images.
-
-**When BuildKit is fine:** Services using public registry base images (e.g., `python:3.11`, `node:20`, `ghcr.io/...`).
-</buildkit_gotcha>
-
 </claude_user_level_memory>
-
-<temp_files>
-**WHEN:** Creating throwaway scripts, analysis, temp work
-**WHY:** Project stays clean, /tmp auto-cleans
-**Behavior:** All temporary scripts (.py, .sh, .js) → /tmp
-</temp_files>
-
-<image_generation_script>
-**Script:** `~/.claude/lib/generate-image.sh "prompt" [output_path] [aspect_ratio]`
-Run with `--help` for full usage.
-</image_generation_script>
 
 <docstrings>
 # File-Level Documentation Protocol
@@ -499,30 +390,3 @@ Exported Objects:
 Code tells you HOW. Docstrings tell you WHY and WHAT. Future AI sessions need context not visible in code itself.
 </docstrings>
 
-<versioning_convention>
-**WHEN:** Creating version strings (plugins, packages, configs)
-**WHY:** Chronological clarity over semantic debates
-**Format:** YYYY-MM-DD-HH-mm
-</versioning_convention>
-
-<supabase_declarative_schema_protocol date="2026-01-01">
-**WHEN:** Working with Supabase project with `supabase/schemas/` directory
-**FIRST:** Read [Supabase Declarative Schemas](https://supabase.com/docs/guides/local-development/declarative-database-schemas) before any schema changes
-
-**Pattern:** Define desired state in schema files → Supabase generates migrations
-
-**File Organization:**
-- One table per file with numeric prefixes (01_users.sql, 02_channels.sql)
-- Files execute in lexicographic order (ensures FK dependencies)
-- Header comment: table purpose + FK dependencies
-
-**Safety Rules:**
-- Never reset versions already deployed to production
-- Use versioned migrations for: INSERT/UPDATE/DELETE, RLS policies, schema privileges
-</supabase_declarative_schema_protocol>
-
-<browser_automation_lookup>
-**WHEN:** Task requires browser automation (UI testing, clicking, screenshots, page navigation)
-**WHY:** Chrome DevTools is a SKILL, not an MCP tool. Searching `mcp-cli tools` for browser automation = false negative every time.
-**Behavior:** Check Skills list for `chrome-devtools-plugin:mcp-chrome-devtools` FIRST. Only search MCP tools if no Skill matches. Concluding "capability unavailable" without checking Skills = failure mode.
-</browser_automation_lookup>
