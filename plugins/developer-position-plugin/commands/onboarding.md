@@ -1,5 +1,6 @@
 ---
 description: "[2026-01-02] [Stage 3.0] Alan Kay Disambiguation Specialist onboarding with consolidated Python bootstraps"
+argument-hint: "<issue_number>"
 ---
 
 ### 1. Task context
@@ -15,29 +16,35 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
 
 0. **Session Context Bootstrap:** Capture stable session metadata while context is clean
 
-   Run the bootstrap script (checks plugin lib first, then ~/.claude/lib):
+   Run the bootstrap script:
    ```bash
    uv run "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/onboarding_bootstrap.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/onboarding_bootstrap.py" || echo ~/.claude/lib/onboarding_bootstrap.py)"
    ```
 
-   Parse JSON output and announce:
+   Parse JSON output.
+
+   **Position detection:** Resolve session ID via `echo $CLAUDE_CODE_SESSION_ID`, then use the **Read tool** (NOT cat/Bash) on `~/.claude/.session-state/{resolved_id}`. If it exists, parse `position:{POS}` line. Store as `{position}`. If no session state or no position line, default `{position}` to `dev`. This determines which onboarding flow to follow — JA reads project indexes, DEV reads tracking files.
+
+   Announce:
    ```
    📋 Session Context:
-   Conversation: {conversation_path}  ← MUST be full path, not filename
 
    | Item | Value |
    |------|-------|
+   | Position | {position} |
    | Environment | {environment} |
    | Project | {folder_name} |
    | Detected Label | {detected_label} (or "none" if empty) |
-   | Label Valid | {validated_label} (true/false/null) |
    | SSH Hosts | {ssh_hosts} |
    | GH Extensions | {gh_extensions} |
    | CLIs Available | {clis} |
+   | Collaborators | {unique logins from collaborators object, comma-separated} |
    | Issue Repos | DaveX2001/deliverable-tracking (clients), DaveX2001/claude-code-improvements (system) |
    ```
 
-   Store `{folder_name}`, `{detected_label}`, `{validated_label}`, and `{issue_list}` for use in Step 4.
+   **Collaborators formatting:** Extract all unique `login` values from both repo arrays in `collaborators` object, deduplicate, show as comma-separated (e.g., "mo-adel007, MariusWilsch, DaveX2001").
+
+   Store `{folder_name}`, `{detected_label}`, `{validated_label}`, `{position}`, and `{issue_list}` for use in Step 4.
    Continue to Step 1 regardless of capture success/failure.
 
 1. **Protocol Understanding:** Use sequential_thinking (2 thoughts minimum) to understand the v2 protocol from CLAUDE.md
@@ -48,53 +55,33 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
    - Ask about specific aspects you don't understand
    - This is a learning opportunity for both AI and user
 
-3. **Introduction:** After understanding the protocol, present concise self-introduction:
-   - Your identity: Alan Kay, Disambiguation Specialist
-   - Your principle: Understanding precedes creation
-   - Your workflow: Clarity phases → Confidence gating → Execution
+3. **Introduction:** After understanding the protocol, present a brief self-introduction (2-3 sentences) derived from the loaded protocol. Do NOT use a hardcoded identity — let the protocol define who you are, your principle, and your workflow.
 
 4. **Project Setup:**
 
-   **Step 4a - Auto-detect project label (using bootstrap values):**
+   **Step 4a - Parse positional argument (if provided):**
+   If `$ARGUMENTS` is non-empty, extract issue number:
+   - Bare number: `121` → `{arg_issue}` = 121
+   - Hash-prefixed: `#121` → `{arg_issue}` = 121
+   - Full URL: `https://github.com/.../issues/121` → `{arg_issue}` = 121
 
-   Use `{detected_label}` and `{validated_label}` from Step 0 bootstrap output.
-
-   **If `{validated_label}` is `true`:**
-   - Label exists in deliverable-tracking repo
-   - Use `{detected_label}`, continue to Step 4b
-
-   **If `{validated_label}` is `false`:**
-   - Label detected but doesn't exist in repo
-   - Treat as "no pattern" case below
-
-   **If `{validated_label}` is `null` or `{detected_label}` is empty:**
-
-   Fetch labels for JIT rename: `gh label list --repo DaveX2001/deliverable-tracking --json name --jq '.[].name'`
-
-   Offer JIT rename via AskUserQuestion:
-   *Question: "Folder '{folder_name}' doesn't follow naming convention. Rename to enable auto-detection?"*
-   - Options: List project labels (uppercase ones) + "Skip (pick label manually)"
-   - Header: "Rename to"
-
-   **If user selects a label:**
-   1. Construct new name: `{SELECTED_LABEL}__{folder_name}`
-   2. Rename local folder: `mv "$(pwd)" "$(dirname "$(pwd)")/{SELECTED_LABEL}__{folder_name}"`
-   3. Rename GitHub repo (if git remote exists): `gh repo rename {SELECTED_LABEL}__{folder_name}`
-   4. Announce: "Folder and repo renamed to {new_name}. Future sessions will auto-detect {SELECTED_LABEL}."
-   5. Continue with selected label
-
-   **If user selects "Skip":**
-   - Fall back to manual label selection via AskUserQuestion
+   If `{arg_issue}` is set, **skip Step 4b display and Step 4c Question 1** — the user already chose their issue. Proceed to Step 4c with only Questions 2 and 3.
 
    **Step 4b - Display issues from bootstrap:**
-   Use `{issue_list}` from Step 0 bootstrap output (already filtered to to-do/in-progress).
+   Use `{issue_list}` from Step 0 bootstrap output (filtered to milestoned issues).
 
-   Display as plain text:
+   Display grouped by milestone, with client prefix stripped from titles (the header already shows the label):
    ```
-   Available issues for {detected_label}:
-   #{number}: {title} [{status}]
-   ...
+   Available issues for {detected_label} ({count} milestoned):
+
+   {milestone_title}:
+     #{number}: {title_without_client_prefix}
+     #{number}: {title_without_client_prefix}
+
+   {milestone_title}:
+     #{number}: {title_without_client_prefix}
    ```
+   Strip the `CLIENT-NAME: ` prefix from titles (e.g., "WILSCH-AI-INTERNAL: Send Sky Express..." → "Send Sky Express..."). The prefix is redundant since issues are already filtered by label.
 
    **Step 4c - Combined AskUserQuestion:**
    Use a SINGLE AskUserQuestion with 3 questions:
@@ -103,26 +90,31 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
    - Options: "Skip issues", with user typing issue number via "Other"
    - Header: "Issue #"
 
-   *Question 2 - README Setup:*
+   *Question 2 - Document Setup:*
+   - Skip (not needed)
    - Backend README (FastAPI + Supabase standards)
    - Frontend README (React standards)
-   - Both READMEs
-   - Skip (not a coding project)
+   - Issue Lifecycle Router (team roles, delegation criteria)
 
-   *Question 3 - Orientation Investigation:*
+   *Question 3 - Orientation Investigation (DEV position only):*
+   **If `{position}` is `dev`:**
    - Skip (no investigation)
    - Quick (parse DoD checkboxes + git status)
    - Full (validate DoD against actual code with evidence)
    - Header: "Investigate"
    - NO recommendation marking - present options neutrally
 
-5. **Issue Integration (if user entered issue numbers):**
+   **If `{position}` is `ja`:** Do NOT show Question 3. JA onboarding skips investigation — the extraction pass IS the investigation.
 
-   a. **Parse ALL issue numbers from user input:**
+5. **Issue Integration (if user entered issue numbers or arg provided):**
+
+   a. **Parse ALL issue numbers from user input or positional argument:**
+      - If `{arg_issue}` was set in Step 4a, use it as initial input
+      - Otherwise, use user's response from Step 4c Question 1
       - Extract all numbers matching pattern `#?\d+` from input
       - Examples: "121 with focus on 227" → [121, 227], "#301" → [301], "121, 227, 228" → [121, 227, 228]
       - Store as `{all_issues}` list
-      - If user selected "Skip issues": skip to Step 6
+      - If user selected "Skip issues" (and no `{arg_issue}`): skip to Step 6
 
    b. **Determine focus issue (for commits):**
       - If single issue: that issue is the focus (`{focus}` = only issue)
@@ -134,56 +126,61 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
         ```
       - Store selected issue as `{focus}`
       - Construct issue URL: `https://github.com/DaveX2001/deliverable-tracking/issues/{focus}`
-      - **Write issue to session-state (UUID-keyed):**
-        1. Extract UUID from the conversation JSONL path (the filename without `.jsonl`): `{uuid} = basename of {conversation_path} without .jsonl`
-        2. Run: `mkdir -p ~/.claude/.session-state && echo "{repo}#{focus}" > ~/.claude/.session-state/{uuid}`
-        3. Where `{repo}` is the issue's repository (e.g., `DaveX2001/deliverable-tracking`)
-        4. This file is read by `session-upload.sh` at session end to post `🗣️` comments
-      - **Write conversation-store URL:** Construct the predictable URL from the conversation JSONL path and write it for commit trailer enforcement:
-        1. Extract folder from the conversation path (the directory name under `~/.claude/projects/`)
-        2. Construct URL: `https://github.com/MariusWilsch/claude-code-conversation-store/blob/main/projects/{folder}/{uuid}.jsonl`
-        3. Run: `echo "{url}" > ~/.claude/.session-state/conversation-url`
-        4. This file is read by `git-commit-guard.sh` to enforce `Conversation:` trailers in commits
+      - **Write issue to statusline state:** Run `"$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/write_session_state.sh" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/write_session_state.sh" || echo ~/.claude/lib/write_session_state.sh)" "{repo}#{focus}"` (where `{repo}` is the issue's repository, e.g., `DaveX2001/deliverable-tracking`)
       - Announce: "Session linked to issues {all_issues}. Commits will reference #{focus}."
 
-   b2. **Branch warning (feature development on main/staging):**
+   b2. **Branch warning (DEV position only):**
+      **Skip this step if `{position}` is `ja`.**
       - Check current branch: `git branch --show-current`
       - If branch is `main` or `staging`:
         - Display warning: `⚠️ On {branch} - consider creating worktree for feature development`
         - This is informational only - does not block onboarding
       - If branch is a feature branch: no warning needed
 
-   c. **Fetch context + status + worktree + tracking (consolidated):**
+   c. **Fetch context + worktree + tracking (consolidated):**
 
       **For EACH issue in {all_issues}, fetch full context as JSON:**
       ```bash
       uv run "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/fetch_issue_context.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/fetch_issue_context.py" || echo ~/.claude/lib/fetch_issue_context.py)" {issue} [--repo owner/repo]
       ```
 
-      **JSON fields:** `issue`, `title`, `state`, `status`, `labels`, `body`, `comments`, `worktree`, `ancestors`, `tracking`
+      **JSON fields:** `issue`, `title`, `state`, `labels`, `body`, `comments`, `worktree`, `ancestors`, `tracking`
 
       **Ancestors field:** Array of parent issues with `{number, title, state, worktree}` for each. Used for detecting parent worktrees.
 
       **From the JSON response:**
-      1. **Check status:** If focus issue has `status: "to-do"`, ask "Move to in-progress?" via AskUserQuestion
-         - If yes: `gh issue edit {focus} --repo {repo} --add-label "in-progress" --remove-label "to-do"`
-      2. **Extract worktree:** `{worktree_path}` = `worktree` field (path or null → "none")
-      3. **Extract tracking:** `{tracking_status}` = `tracking` field ("MISSING", "NO_AC", or "HAS_AC")
-      4. **Extract ancestors:** `{ancestors}` = `ancestors` field (array of parent issues with worktrees)
+      1. **Extract worktree:** `{worktree_path}` = `worktree` field (path or null → "none")
+      2. **Extract tracking:** `{tracking_status}` = `tracking` field ("MISSING", "NO_AC", or "HAS_AC")
+      3. **Extract ancestors:** `{ancestors}` = `ancestors` field (array of parent issues with worktrees)
 
-      **Read tracking files (if tracking exists):**
+      **Position-specific context loading:**
+
+      **If `{position}` is `dev`:**
       If `{tracking_status}` is "NO_AC" or "HAS_AC", read BOTH files in `.claude/tracking/issue-{focus}/`:
       - `tracking.md`: DoD checkboxes and AC definitions
       - `verification.jsonl`: Prior verification traces (if exists and non-empty)
-
       This provides authoritative state: what's defined (tracking.md) and what's verified (verification.jsonl).
+
+      **If `{position}` is `ja`:**
+      Use `project_index` and `project_index_url` from the fetch_issue_context JSON response.
+
+      If `project_index` is non-null, read the full content — this is the JA's primary source material (transcripts, design documents, meeting agendas, email threads, external references, etc.). Then display a link and list the `##` section headers from the content. Example:
+      ```
+      📚 [Project Index]({project_index_url})
+        ## #909 — Dokumentenverarbeitung SLA & Wartung
+        ## #585 — Review Veterinary BUSAN doc
+        ## #961 — Migrate to On-Premise VM
+      ```
+
+      If `project_index` is null, note "No project index found for this epic."
 
       **Comment parsing:**
       - `comments.recent` = last 5 (current state, next step)
       - `comments.history` = older (scope, plans)
       - **Next step comes from `comments.recent`**
 
-   d. Commit reference uses focus issue:
+   d. **Commit reference (DEV position only):**
+      **Skip this step if `{position}` is `ja`.**
       - Commits should reference: `Refs DaveX2001/deliverable-tracking#{focus}`
 
    e. **Understand Focus Issue State from Comments (MAIN AGENT):**
@@ -202,11 +199,20 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
 
       **CRITICAL:** Code tells you WHAT EXISTS. Comments tell you WHAT TO DO NEXT.
 
-   f. **README Fetch (if user chose README in Step 4c):**
+   f. **Document Fetch (DEV position only, if user chose a document in Step 4c):**
+      **Skip this step if `{position}` is `ja`.**
+
+      For READMEs (files exceed 30K chars — Bash truncates, so pipe to temp file then Read):
       ```bash
-      gh api repos/veloxforce/velox-global-adrs/contents/README-FAST-API-BACKEND.md -H "Accept: application/vnd.github.raw"
+      gh api repos/veloxforce/velox-global-adrs/contents/README-FAST-API-BACKEND.md -H "Accept: application/vnd.github.raw" > /tmp/readme-guidelines.md
       ```
       (Replace filename for frontend: `README-REACT-FRONTEND.md`)
+      Then use the **Read tool** on `/tmp/readme-guidelines.md` to load the full content without truncation.
+
+      For Operations Manual Router (entry point to all company docs):
+      ```bash
+      cat ~/.claude/hippocampus/global/wilsch-ai-company-router.md
+      ```
 
    g. **Orientation Investigation (based on user's choice in Step 4c Question 3):**
 
@@ -263,7 +269,7 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
       **Present combined result:**
       ```
       🎫 [Issue #{focus}: {title}](https://github.com/DaveX2001/deliverable-tracking/issues/{focus})
-      **State:** {state} | **Status:** {status} | **Labels:** {labels}
+      **State:** {state} | **Labels:** {labels}
 
       📊 **DoD Status (Verified against code)**
 
@@ -334,7 +340,7 @@ Be concise and professional. Your introduction should be brief (3-4 sentences). 
       **Present combined result:**
       ```
       🎫 [Issue #{focus}: {title}](https://github.com/DaveX2001/deliverable-tracking/issues/{focus})
-      **State:** {state} | **Status:** {status}
+      **State:** {state}
 
       📊 DoD: X/Y complete
         ✅/⬜ [items list]

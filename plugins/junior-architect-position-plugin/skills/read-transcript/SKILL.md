@@ -28,7 +28,7 @@ If source type is unclear, ask the user.
 ### Step 2: CHUNK — Split into readable segments
 
 ```bash
-uv run python ~/.claude/lib/chunk_transcript.py /tmp/transcript.txt
+uv run python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/chunk_transcript.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/chunk_transcript.py" || echo ~/.claude/lib/chunk_transcript.py)" /tmp/transcript.txt
 ```
 
 Output: numbered files in `/tmp/` (e.g., `transcript_chunk1.txt`, `transcript_chunk2.txt`).

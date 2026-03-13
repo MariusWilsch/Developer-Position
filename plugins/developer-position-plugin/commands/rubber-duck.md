@@ -121,7 +121,7 @@ You MUST use sequential_thinking BEFORE each AskUserQuestion call.
 
 **FIRST CYCLE ONLY - Run before your first thought:**
 ```bash
-uv run ~/.claude/lib/list_skills_by_discovery.py rubber-duck
+uv run "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/list_skills_by_discovery.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/list_skills_by_discovery.py" || echo ~/.claude/lib/list_skills_by_discovery.py)" rubber-duck
 ```
 This outputs skills to evaluate. On subsequent cycles, skip this step.
 

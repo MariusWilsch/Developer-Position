@@ -196,7 +196,7 @@ Use "pending" to record WHY verification was blocked - this creates historical d
 8. **Present findings summary** - Show verification results table to user with pass/fail/pending status and key observations
 9. **Ask before writing** - Use AskUserQuestion: "Should I append these verification results to verification.jsonl?"
 10. **If approved: Append** - Read existing JSONL, append new entries (one JSON line per AC)
-11. **Validate** - Run: `uv run ~/.claude/lib/validate_verification.py {issue} --path {project_path}`
+11. **Validate** - Run: `uv run "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/validate_verification.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/validate_verification.py" || echo ~/.claude/lib/validate_verification.py)" {issue} --path {project_path}`
 
 ### 8. Thinking step by step
 

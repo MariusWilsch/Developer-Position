@@ -11,15 +11,15 @@ Extract conversation content from JSONL files. Use for self-reflection, verifica
 
 ```bash
 # Extract everything (all content types always included)
-uv run --with tiktoken python ~/.claude/skills/manage-artifact/scripts/extract_conversation.py \
+uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
   "<conversation.jsonl>"
 
 # Last 50 items
-uv run --with tiktoken python ~/.claude/skills/manage-artifact/scripts/extract_conversation.py \
+uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
   "<conversation.jsonl>" --last 50
 
 # JSONL format (backwards compat)
-uv run --with tiktoken python ~/.claude/skills/manage-artifact/scripts/extract_conversation.py \
+uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
   "<conversation.jsonl>" --json
 ```
 
@@ -78,7 +78,7 @@ Verbose tool output (>1000 chars) is externalized to detail files:
 
 ```xml
 <bash_5>
-uv run ~/.claude/lib/onboarding_bootstrap.py
+uv run onboarding_bootstrap.py
 → [4129 chars → /tmp/{uid}/details/bash_5.txt]
 </bash_5>
 ```

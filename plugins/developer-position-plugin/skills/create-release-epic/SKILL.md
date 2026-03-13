@@ -102,7 +102,7 @@ Title: ask user via AskUserQuestion — AI proposes based on themes, user decide
 **Gate 1: Create + Post**
 
 Confirm → then execute:
-1. Create issue: `~/.claude/lib/create_tracking_issue.sh --repo DaveX2001/claude-code-improvements --title "{title}" --body-file /tmp/release-epic-body.md --label "backlog"`
+1. Create issue: `"$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/create_tracking_issue.sh" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/create_tracking_issue.sh" || echo ~/.claude/lib/create_tracking_issue.sh)" --repo DaveX2001/claude-code-improvements --title "{title}" --body-file /tmp/release-epic-body.md --label "backlog"`
 2. For each theme, fetch observation bodies and post as comment:
    ```bash
    # Collect all observation IDs for this theme

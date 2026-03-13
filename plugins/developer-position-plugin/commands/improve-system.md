@@ -30,7 +30,7 @@ Parse conversation path from issue body (look for `.jsonl` path). If found:
 
 1. **Extract with composable flags:**
 ```bash
-uv run python ~/.claude/skills/manage-artifact/scripts/extract_conversation.py "{conversation_path}" [flags] > /tmp/conversation_extract.txt
+uv run python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" "{conversation_path}" [flags] > /tmp/conversation_extract.txt
 ```
 
 **Available flags:** `--user`, `--assistant`, `--tools`, `--last N`
