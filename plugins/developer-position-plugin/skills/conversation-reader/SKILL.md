@@ -1,187 +1,129 @@
 ---
 name: conversation-reader
-description: "Extract and read Claude conversation JSONL files with progressive disclosure (discovery: rubber-duck). Evaluate at rubber-duck or at any point in the session when task requires reading conversation history, verifying tool outputs, or auditing session behavior. Use instead of raw Read/grep on ~/.claude/projects/*.jsonl files."
+description: "Extract and read Claude conversation JSONL files for behavioral diagnosis, self-reflection, and audit. Use when task involves conversation history, session evidence, or .jsonl files from ~/.claude/projects/. Triggers: 'read conversation', 'extract session', 'what happened in session X', 'find the correction', conversation-reader, or any reference to session UUIDs. The extraction script handles chunking — this skill teaches the reading methodology (discovery: rubber-duck)."
 ---
 
 # Conversation Reader
 
-Extract conversation content from JSONL files. Use for self-reflection, verification, and audit.
+Conversations carry behavioral context — the narrative arc that explains
+WHY something happened, not just THAT it happened. Scanning finds strings.
+Reading finds meaning. Your job is to find meaning.
 
-## Quick Start
+## Extract
 
 ```bash
-# Extract everything (all content types always included)
-uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
-  "<conversation.jsonl>"
-
-# Last 50 items
-uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
-  "<conversation.jsonl>" --last 50
-
-# JSONL format (backwards compat)
-uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/skills/manage-artifact/scripts/extract_conversation.py)" \
-  "<conversation.jsonl>" --json
+uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/lib/extract_conversation.py)" "<session-uuid-or-path>"
 ```
 
-## Flags
+The script auto-resolves bare session UUIDs to full paths, chunks output
+into ~30K character files, and prints chunk paths with per-chunk token counts.
 
-| Flag | Description |
-|------|-------------|
-| `--last N` | Limit to last N items |
-| `--output DIR` | Custom output directory (default: `/tmp/{conversation_uid}/`) |
-| `--json` | Output JSONL instead of XML (backwards compat) |
+Stderr carries the total token count and errors — never suppress it with `2>/dev/null`.
+Silencing stderr means flying blind on both extraction failures and budget decisions.
 
-All content types always included: user messages, assistant text, native thinking blocks, and tool calls with progressive disclosure. No content-filtering flags exist.
+## Triage
 
-**Never use `2>/dev/null`** — stderr contains the total token count and error messages. Suppressing stderr = silent failures and missing token counts. Every time.
+Every conversation gets triaged — no size thresholds, no exceptions.
+The query shapes what the triage agent selects, so make it specific.
 
-## Output Structure
-
-```
-/tmp/{conversation_uid}/
-├── chunk1.txt, chunk2.txt, ...   Semantic XML chunks (~30K chars each)
-└── details/                       Progressive disclosure detail files
-    ├── bash_5.txt                 Verbose tool output >1000 chars
-    ├── read_12.txt                Full file contents
-    └── task_43.txt                Agent results
-```
-
-## Output Formats
-
-### Default: Semantic XML
-
-Optimized for AI consumption. Each entry has semantic tag with index:
-
-```xml
-<user_1>
-Fix the bug in config.py
-</user_1>
-
-<bash_2>
-git status
-→ On branch main
-    modified: config.py
-</bash_2>
-
-<thinking_5>
-Reviewing the change... confidence is high
-</thinking_5>
-
-<assistant_3>
-I'll update the config file now.
-</assistant_3>
-```
-
-### Progressive Disclosure
-
-Verbose tool output (>1000 chars) is externalized to detail files:
-
-```xml
-<bash_5>
-uv run onboarding_bootstrap.py
-→ [4129 chars → /tmp/{uid}/details/bash_5.txt]
-</bash_5>
-```
-
-**Exempt from externalization:** AskUserQuestion — always stays full inline (questions + options + answers).
-
-### Unified Thinking Tags
-
-All reasoning sources render as `<thinking_N>`:
-- Native extended thinking blocks
-- MCP reasoning tools (AoT, AoT-light, sequentialthinking)
-- Bash-wrapped `mcp-cli call` to reasoning tools
-
-### Known-Command Patterns
-
-| Pattern | Behavior |
-|---------|----------|
-| `mcp-cli info/tools/grep` | Skipped entirely (zero signal) |
-| `onboarding_bootstrap.py` | Condensed to key fields inline, full JSON in detail file |
-| `gh issue` commands | Condensed to `#N: title` inline, full output in detail file |
-
-### --json: JSONL Format
-
-One JSON object per line (backwards compatible):
-
-```json
-{"role": "user", "text": "Fix the bug", "_id": "abc123"}
-{"role": "assistant", "tool_name": "Bash", "tool_input": {...}}
-```
-
-## Chunking
-
-- **Auto-chunks:** Splits into ~30K character files when content is large
-- **IMPORTANT: Read each chunk in its entirety** — the whole purpose of chunking is to create context-sized pieces. Do not grep or extract from chunks; load each one fully.
-
-## Large Conversation Handling
-
-**< 50K tokens:** Read chunks directly — load each chunk sequentially, extract what you need.
-
-**> 50K tokens:** Triage → Read. Two phases, one workflow. No exceptions.
-
-### Phase 1: Triage (agents filter)
-
-Spawn sonnet agents with a mandatory query. Agents identify WHICH chunks matter — they do NOT answer the query themselves. Triage agents are filters, not analysts.
+Spawn a sonnet agent as a **filter**. It identifies which chunks matter.
+It does not answer the query — that's your job after reading.
 
 ```
-Task(subagent_type="general-purpose", model="sonnet", prompt="
-  Read each chunk INDIVIDUALLY using the Read tool — one file per
-  Read call. Never use Bash for-loops, cat, or any method that
-  combines multiple chunks. Every time.
+Task(subagent_type="general-purpose", prompt="
+  Chunks to read (use these EXACT paths):
+  {chunk_file_list_from_extraction_output}
 
-  Query: {specific_question}
+  Read each chunk INDIVIDUALLY using the Read tool — one file per Read call.
 
-  Return in this EXACT format only:
+  Query: {your_specific_question}
+
+  Return ONLY:
 
   MUST_READ:
-  - chunk N
   - chunk N
 
   EXCLUDED:
   - chunk N-N: (one-line what these contain)
 
-  Rules:
-  - MUST_READ = bare chunk IDs only. No reasons, no quotes, no analysis.
-  - EXCLUDED = chunk IDs + one-line orientation so the reader knows what was skipped.
-  - Total response must be under 12 lines.
-  - You are a filter. The main agent reads the chunks itself.
-  - Do NOT answer the query. Do NOT provide analysis, verdicts, or summaries.")
+  You are a filter. Do not answer the query, analyze, or summarize.")
 ```
 
-YOU MUST include a specific query. "Read the conversation" without a question = wasted triage. The query drives chunk selection.
+Why filters, not analysts: when triage agents analyze, their summaries
+become your final output — and summaries lose the behavioral nuance
+that makes conversation reading valuable. The correction quote matters
+more than an agent's interpretation of it.
 
-### Phase 2: Budget check
+## Pre-Screen (multiple conversations)
 
-Sum token counts for must-read chunks (extraction output shows per-chunk tokens). If total must-read tokens > 60K, spawn a second triage agent on ONLY the must-read chunks:
+When reading 2 or more conversations for the same query, pre-screen first.
+You can't triage them all — the chunks alone would exceed your context.
+Select the 1-2 best conversations, then triage chunks within those.
+
+Spawn one agent per conversation. Each scans its conversation
+against your query and returns three signals:
 
 ```
-Task(subagent_type="general-purpose", model="sonnet", prompt="
-  Read these specific chunks: [must-read list with paths].
-  Read each chunk INDIVIDUALLY using the Read tool.
+Task(subagent_type="general-purpose", prompt="
+  Read all chunks at {chunk_directory}.
+  Read each chunk individually via Read tool.
 
-  Query: {same_query}
+  Query: {your_query}
 
-  These chunks all passed first triage. But {total}K tokens exceeds
-  the 60K context budget. Identify redundant or duplicate evidence.
-  Return the 3-5 sharpest chunks. Same MUST_READ/EXCLUDED format.")
+  Scan the conversation for evidence that answers this query.
+  Return ONLY these three signals:
+
+  1. ANSWERS QUERY? Yes / Partial / No
+  2. DENSITY: How much evidence? (thin = 1 moment, moderate = 2-3, rich = throughout)
+  3. SHARPEST QUOTE: The single most relevant sentence from the conversation.
+
+  You are a filter. Do not answer the query itself.")
 ```
 
-Pass 1 filters by **relevance** (does this chunk answer the query?). Pass 2 filters by **redundancy** (do these chunks say the same thing?).
+From the returns, select 1-2 conversations with the richest evidence
+and widest coverage. Then triage chunks within those.
 
-### Phase 3: Read (main context analyzes)
+## Read
 
-After triage (and budget check if needed), YOU MUST read each must-read chunk in full using the Read tool. This is where analysis happens — in main context, with full behavioral nuance preserved.
+After triage, YOU — the main agent — read each must-read chunk in full
+using the Read tool. Sub-agents triaged. You read. You analyze.
 
-Triage narrows chunks to 3-5 that fit in context. You read those 3-5. Every time. Skipping this step = diagnosing from summaries instead of evidence. The failure mode: triage agents return analysis, main agent uses summaries as final output, behavioral nuance is lost.
+This separation matters: sub-agents are filters that identify where to look.
+Analysis happens in main context where the user can see your reasoning,
+ask follow-ups, and correct misinterpretations. Delegating analysis
+to sub-agents removes the user from the loop.
 
-## When to Use
+## Examples
 
-| Scenario | Approach |
-|----------|----------|
-| "What did we discuss?" | Extract, read chunks directly |
-| "What did Claude do?" | Extract, focus on tool tags in chunks |
-| "Verify tool output" | Extract with `--last 20` |
-| "Full audit" | Extract all, read sequentially |
-| "Large conversation (>50K)" | Extract, triage → read identified chunks |
-| "Need raw JSON" | Add `--json` |
+**Example 1: "What correction did the user make about approach?"**
+
+1. Extract: `uv run --with tiktoken python "$([ -f "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" ] && echo "${CLAUDE_PLUGIN_ROOT}/lib/extract_conversation.py" || echo ~/.claude/lib/extract_conversation.py)" "9dce4f93"`
+2. Triage with query: "Find where the user corrected the AI about witness approach"
+3. Read must-read chunks in main context
+4. Analyze the correction in full behavioral context
+
+**Example 2: "Which of these 6 sessions has the best evidence for Theme 2?"**
+
+1. Extract all 6 sessions
+2. Pre-screen: 1 agent per conversation, query: "Does this contain approach discussion failures?"
+3. Select 1-2 richest conversations from pre-screen signals
+4. Triage selected conversations for must-read chunks
+5. Read chunks, synthesize across conversations
+
+## Troubleshooting
+
+**Triage agent returns analysis instead of chunk IDs:**
+The agent adopted an analyst role instead of a filter role.
+Reinforce in the prompt: "You are a filter. Do not answer the query."
+
+**Triage agent guesses wrong chunk file paths:**
+The extraction output prints exact paths with token counts.
+Copy them into the triage prompt verbatim — never let agents infer paths.
+
+**Context budget blown after reading must-read chunks:**
+Too many conversations selected. Return to pre-screen and narrow to 1-2.
+The pre-screen signals (density + sharpest quote) tell you which to keep.
+
+**Extraction produces very small chunks (<200 tokens):**
+Degenerate chunks from short sessions. The script merges these automatically —
+if you still see them, the session was genuinely tiny.
